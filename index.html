@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Tuning Fork - Gateway Enhanced</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        const ChevronDown = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        );
+        
+        const ChevronRight = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        );
+        
+        const Volume2 = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+        );
+        
+        const VolumeX = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+        );
+        
+        const BookOpen = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+            </svg>
+        );
+        
+        const StopCircle = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <rect x="9" y="9" width="6" height="6"></rect>
+            </svg>
+        );
+
+        const Heart = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+        );
+
+        const HumanTuningFork = () => {
+          const [leftFreq, setLeftFreq] = useState(0);
+          const [rightFreq, setRightFreq] = useState(0);
+          const [volume, setVolume] = useState(40);
+          const [leftMuted, setLeftMuted] = useState(false);
+          const [rightMuted, setRightMuted] = useState(false);
+          const [mode, setMode] = useState('independent');
+          const [lockedOffset, setLockedOffset] = useState(0);
+          const [pinkNoise, setPinkNoise] = useState(false);
+          const [whiteNoise, setWhiteNoise] = useState(false);
+          const [brownNoise, setBrownNoise] = useState(false);
+          const [noiseVolume, setNoiseVolume] = useState(50);
+          const [clickTrack, setClickTrack] = useState(false);
+          const [clickStyle, setClickStyle] = useState('click');
+          const [clickVolume, setClickVolume] = useState(50);
+          const [sessionActive, setSessionActive] = useState(false);
+          const [currentSession, setCurrentSession] = useState(null);
+          const [currentPhase, setCurrentPhase] = useState(0);
+          const [sessionProgress, setSessionProgress] = useState(0);
+          const [timeRemaining, setTimeRemaining] = useState('');
+          const [showBrainwaveGuide, setShowBrainwaveGuide] = useState(false);
+          const [showBackgroundSounds, setShowBackgroundSounds] = useState(false);
+          const [showNotes, setShowNotes] = useState(false);
+          const [showLeftInput, setShowLeftInput] = useState(false);
+          const [showRightInput, setShowRightInput] = useState(false);
+          const [wavePhase, setWavePhase] = useState(0);
+          
+          const audioContextRef = useRef(null);
+          const leftOscRef = useRef(null);
+          const rightOscRef = useRef(null);
+          const leftGainRef = useRef(null);
+          const rightGainRef = useRef(null);
+          const masterGainRef = useRef(null);
+          const sessionIntervalRef = useRef(null);
+          const canvasRef = useRef(null);
+          const animationRef = useRef(null);
+          const pinkNoiseSourceRef = useRef(null);
+          const whiteNoiseSourceRef = useRef(null);
+          const brownNoiseSourceRef = useRef(null);
+          const pinkNoiseGainRef = useRef(null);
+          const whiteNoiseGainRef = useRef(null);
+          const brownNoiseGainRef = useRef(null);
+          const clickIntervalRef = useRef(null);
+          
+          const GATEWAY_SESSIONS = {
+            "Focus 10": [
+              { name: "Entry (Alpha)", left: 100, right: 110, duration: 300 },
+              { name: "Deep State (Alpha)", left: 100, right: 110, duration: 600 },
+              { name: "Return (Alpha)", left: 100, right: 110, duration: 300 }
+            ],
+            "Focus 12": [
+              { name: "Entry (Alpha)", left: 100, right: 110, duration: 180 },
+              { name: "Transition (Theta)", left: 100, right: 106, duration: 240 },
+              { name: "Deep Theta", left: 100, right: 106, duration: 600 },
+              { name: "Return (Alpha)", left: 100, right: 110, duration: 180 }
+            ],
+            "Focus 15": [
+              { name: "Entry (Alpha)", left: 100, right: 110, duration: 180 },
+              { name: "Deep Theta", left: 100, right: 105, duration: 300 },
+              { name: "Delta State", left: 100, right: 102, duration: 480 },
+              { name: "Return (Theta)", left: 100, right: 105, duration: 180 },
+              { name: "Return (Alpha)", left: 100, right: 110, duration: 120 }
+            ]
+          };
+          
+          const generateNoiseBuffer = (type) => {
+            if (!audioContextRef.current) return null;
+            const bufferSize = audioContextRef.current.sampleRate * 2;
+            const buffer = audioContextRef.current.createBuffer(1, bufferSize, audioContextRef.current.sampleRate);
+            const data = buffer.getChannelData(0);
+            
+            if (type === 'white') {
+              for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+              }
+            } else if (type === 'pink') {
+              let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+              for (let i = 0; i < bufferSize; i++) {
+                const white = Math.random() * 2 - 1;
+                b0 = 0.99886 * b0 + white * 0.0555179;
+                b1 = 0.99332 * b1 + white * 0.0750759;
+                b2 = 0.96900 * b2 + white * 0.1538520;
+                b3 = 0.86650 * b3 + white * 0.3104856;
+                b4 = 0.55000 * b4 + white * 0.5329522;
+                b5 = -0.7616 * b5 - white * 0.0168980;
+                data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+                b6 = white * 0.115926;
+              }
+            } else if (type === 'brown') {
+              let lastOut = 0;
+              for (let i = 0; i < bufferSize; i++) {
+                const white = Math.random() * 2 - 1;
+                data[i] = (lastOut + (0.02 * white)) / 1.02;
+                lastOut = data[i];
+                data[i] *= 3.5;
+              }
+            }
+            return buffer;
+          };
+		  useEffect(() => {
+            const initAudio = () => {
+              if (!audioContextRef.current) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioContextRef.current = new AudioContext();
+                
+                masterGainRef.current = audioContextRef.current.createGain();
+                masterGainRef.current.connect(audioContextRef.current.destination);
+                masterGainRef.current.gain.value = volume / 200;
+                
+                leftOscRef.current = audioContextRef.current.createOscillator();
+                leftGainRef.current = audioContextRef.current.createGain();
+                leftOscRef.current.connect(leftGainRef.current);
+                
+                const leftMerger = audioContextRef.current.createChannelMerger(2);
+                leftGainRef.current.connect(leftMerger, 0, 0);
+                leftMerger.connect(masterGainRef.current);
+                
+                leftOscRef.current.frequency.value = leftFreq;
+                leftGainRef.current.gain.value = leftMuted ? 0 : 1;
+                leftOscRef.current.start();
+                
+                rightOscRef.current = audioContextRef.current.createOscillator();
+                rightGainRef.current = audioContextRef.current.createGain();
+                rightOscRef.current.connect(rightGainRef.current);
+                
+                const rightMerger = audioContextRef.current.createChannelMerger(2);
+                rightGainRef.current.connect(rightMerger, 0, 1);
+                rightMerger.connect(masterGainRef.current);
+                
+                rightOscRef.current.frequency.value = rightFreq;
+                rightGainRef.current.gain.value = rightMuted ? 0 : 1;
+                rightOscRef.current.start();
+                
+                pinkNoiseGainRef.current = audioContextRef.current.createGain();
+                pinkNoiseGainRef.current.gain.value = 0;
+                pinkNoiseGainRef.current.connect(masterGainRef.current);
+                
+                whiteNoiseGainRef.current = audioContextRef.current.createGain();
+                whiteNoiseGainRef.current.gain.value = 0;
+                whiteNoiseGainRef.current.connect(masterGainRef.current);
+                
+                brownNoiseGainRef.current = audioContextRef.current.createGain();
+                brownNoiseGainRef.current.gain.value = 0;
+                brownNoiseGainRef.current.connect(masterGainRef.current);
+              }
+            };
+            
+            const handleUserInteraction = () => {
+              initAudio();
+              document.removeEventListener('click', handleUserInteraction);
+            };
+            
+            document.addEventListener('click', handleUserInteraction);
+            
+            return () => {
+              document.removeEventListener('click', handleUserInteraction);
+              if (audioContextRef.current) {
+                audioContextRef.current.close();
+              }
+            };
+          }, []);
+          
+          useEffect(() => {
+            if (!audioContextRef.current || !pinkNoiseGainRef.current) return;
+            
+            if (pinkNoise) {
+              const buffer = generateNoiseBuffer('pink');
+              const source = audioContextRef.current.createBufferSource();
+              source.buffer = buffer;
+              source.loop = true;
+              source.connect(pinkNoiseGainRef.current);
+              source.start();
+              pinkNoiseSourceRef.current = source;
+              pinkNoiseGainRef.current.gain.value = noiseVolume / 100 * 0.3;
+            } else if (pinkNoiseSourceRef.current) {
+              pinkNoiseSourceRef.current.stop();
+              pinkNoiseSourceRef.current = null;
+              pinkNoiseGainRef.current.gain.value = 0;
+            }
+          }, [pinkNoise]);
+          
+          useEffect(() => {
+            if (!audioContextRef.current || !whiteNoiseGainRef.current) return;
+            
+            if (whiteNoise) {
+              const buffer = generateNoiseBuffer('white');
+              const source = audioContextRef.current.createBufferSource();
+              source.buffer = buffer;
+              source.loop = true;
+              source.connect(whiteNoiseGainRef.current);
+              source.start();
+              whiteNoiseSourceRef.current = source;
+              whiteNoiseGainRef.current.gain.value = noiseVolume / 100 * 0.3;
+            } else if (whiteNoiseSourceRef.current) {
+              whiteNoiseSourceRef.current.stop();
+              whiteNoiseSourceRef.current = null;
+              whiteNoiseGainRef.current.gain.value = 0;
+            }
+          }, [whiteNoise]);
+          
+          useEffect(() => {
+            if (!audioContextRef.current || !brownNoiseGainRef.current) return;
+            
+            if (brownNoise) {
+              const buffer = generateNoiseBuffer('brown');
+              const source = audioContextRef.current.createBufferSource();
+              source.buffer = buffer;
+              source.loop = true;
+              source.connect(brownNoiseGainRef.current);
+              source.start();
+              brownNoiseSourceRef.current = source;
+              brownNoiseGainRef.current.gain.value = noiseVolume / 100 * 0.3;
+            } else if (brownNoiseSourceRef.current) {
+              brownNoiseSourceRef.current.stop();
+              brownNoiseSourceRef.current = null;
+              brownNoiseGainRef.current.gain.value = 0;
+            }
+          }, [brownNoise]);
+          
+          useEffect(() => {
+            if (pinkNoiseGainRef.current && pinkNoise) {
+              pinkNoiseGainRef.current.gain.value = noiseVolume / 100 * 0.3;
+            }
+            if (whiteNoiseGainRef.current && whiteNoise) {
+              whiteNoiseGainRef.current.gain.value = noiseVolume / 100 * 0.3;
+            }
+            if (brownNoiseGainRef.current && brownNoise) {
+              brownNoiseGainRef.current.gain.value = noiseVolume / 100 * 0.3;
+            }
+          }, [noiseVolume]);
+          
+          useEffect(() => {
+            if (!audioContextRef.current) return;
+            
+            if (clickTrack && leftFreq > 0 && rightFreq > 0) {
+              const beatFreq = Math.abs(leftFreq - rightFreq);
+              if (beatFreq < 0.5) return;
+              
+              const interval = 1000 / beatFreq;
+              
+              const playClick = () => {
+                const ctx = audioContextRef.current;
+                const now = ctx.currentTime;
+                
+                if (clickStyle === 'click') {
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(masterGainRef.current);
+                  
+                  osc.frequency.value = 1000;
+                  gain.gain.setValueAtTime(clickVolume / 100 * 0.2, now);
+                  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.002);
+                  
+                  osc.start(now);
+                  osc.stop(now + 0.002);
+                } else if (clickStyle === 'beep') {
+                  const osc = ctx.createOscillator();
+                  const gain = ctx.createGain();
+                  osc.connect(gain);
+                  gain.connect(masterGainRef.current);
+                  
+                  osc.frequency.value = 800;
+                  gain.gain.setValueAtTime(clickVolume / 100 * 0.15, now);
+                  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                  
+                  osc.start(now);
+                  osc.stop(now + 0.1);
+                }
+              };
+              
+              clickIntervalRef.current = setInterval(playClick, interval);
+            } else {
+              if (clickIntervalRef.current) {
+                clearInterval(clickIntervalRef.current);
+                clickIntervalRef.current = null;
+              }
+            }
+            
+            return () => {
+              if (clickIntervalRef.current) {
+                clearInterval(clickIntervalRef.current);
+              }
+            };
+          }, [clickTrack, clickStyle, clickVolume, leftFreq, rightFreq]);
+          
+          useEffect(() => {
+            if (leftOscRef.current) {
+              leftOscRef.current.frequency.value = leftFreq;
+            }
+          }, [leftFreq]);
+          
+          useEffect(() => {
+            if (rightOscRef.current) {
+              rightOscRef.current.frequency.value = rightFreq;
+            }
+          }, [rightFreq]);
+          
+          useEffect(() => {
+            if (masterGainRef.current) {
+              masterGainRef.current.gain.value = volume / 200;
+            }
+          }, [volume]);
+          
+          useEffect(() => {
+            if (leftGainRef.current) {
+              leftGainRef.current.gain.value = leftMuted ? 0 : 1;
+            }
+          }, [leftMuted]);
+          
+          useEffect(() => {
+            if (rightGainRef.current) {
+              rightGainRef.current.gain.value = rightMuted ? 0 : 1;
+            }
+          }, [rightMuted]);
+          
+          const handleLeftChange = (value) => {
+            const newLeft = parseFloat(value);
+            setLeftFreq(newLeft);
+            
+            if (mode === 'locked') {
+              const offset = lockedOffset;
+              const newRight = newLeft >= rightFreq ? 
+                Math.max(0, newLeft - offset) : 
+                Math.min(700, newLeft + offset);
+              setRightFreq(newRight);
+            }
+          };
+          
+          const handleRightChange = (value) => {
+            const newRight = parseFloat(value);
+            setRightFreq(newRight);
+            
+            if (mode === 'locked') {
+              const offset = lockedOffset;
+              const newLeft = newRight >= leftFreq ? 
+                Math.max(0, newRight - offset) : 
+                Math.min(700, newRight + offset);
+              setLeftFreq(newLeft);
+            }
+          };
+          
+          const handleLockMode = () => {
+            setLockedOffset(Math.abs(leftFreq - rightFreq));
+            setMode('locked');
+          };
+          
+          const setPreset = (left, right) => {
+            setLeftFreq(left);
+            setRightFreq(right);
+            if (mode === 'locked') {
+              setLockedOffset(Math.abs(left - right));
+            }
+          };
+          
+          const startSession = (sessionName) => {
+            const phases = GATEWAY_SESSIONS[sessionName];
+            setCurrentSession({ name: sessionName, phases, startTime: Date.now() });
+            setCurrentPhase(0);
+            setSessionActive(true);
+            setLeftFreq(phases[0].left);
+            setRightFreq(phases[0].right);
+            
+            sessionIntervalRef.current = setInterval(() => {
+              updateSession(phases);
+            }, 1000);
+          };
+          
+          const updateSession = (phases) => {
+            if (!sessionActive || !currentSession) return;
+            
+            const elapsed = (Date.now() - currentSession.startTime) / 1000;
+            const totalDuration = phases.reduce((sum, p) => sum + p.duration, 0);
+            
+            let phaseStart = 0;
+            let newPhase = currentPhase;
+            
+            for (let i = 0; i < phases.length; i++) {
+              if (elapsed >= phaseStart && elapsed < phaseStart + phases[i].duration) {
+                newPhase = i;
+                break;
+              }
+              phaseStart += phases[i].duration;
+            }
+            
+            if (elapsed >= totalDuration) {
+              stopSession();
+              return;
+            }
+            
+            if (newPhase !== currentPhase) {
+              setCurrentPhase(newPhase);
+              setLeftFreq(phases[newPhase].left);
+              setRightFreq(phases[newPhase].right);
+            }
+            
+            const phaseElapsed = elapsed - phaseStart;
+            const phaseRemaining = phases[newPhase].duration - phaseElapsed;
+            const mins = Math.floor(phaseRemaining / 60);
+            const secs = Math.floor(phaseRemaining % 60);
+            setTimeRemaining(`${mins}:${secs.toString().padStart(2, '0')}`);
+            setSessionProgress((elapsed / totalDuration) * 100);
+          };
+          
+          const stopSession = () => {
+            setSessionActive(false);
+            setCurrentSession(null);
+            setSessionProgress(0);
+            setTimeRemaining('');
+            setLeftFreq(0);
+            setRightFreq(0);
+            if (sessionIntervalRef.current) {
+              clearInterval(sessionIntervalRef.current);
+            }
+          };
+		  useEffect(() => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const beatFreq = Math.abs(leftFreq - rightFreq);
+            
+            const animate = () => {
+              const width = canvas.width;
+              const height = canvas.height;
+              
+              ctx.clearRect(0, 0, width, height);
+              
+              if (leftFreq === 0 && rightFreq === 0) {
+                ctx.fillStyle = '#999999';
+                ctx.font = '14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('Set frequencies to see waveform', width / 2, height / 2);
+                return;
+              }
+              
+              ctx.strokeStyle = '#cccccc';
+              ctx.setLineDash([2, 2]);
+              ctx.beginPath();
+              ctx.moveTo(0, height / 2);
+              ctx.lineTo(width, height / 2);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              
+              if (beatFreq === 0) {
+                ctx.strokeStyle = '#0066cc';
+                ctx.beginPath();
+                ctx.moveTo(0, height / 2);
+                ctx.lineTo(width, height / 2);
+                ctx.stroke();
+                
+                ctx.fillStyle = '#666666';
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No binaural beat (frequencies equal)', width / 2, 20);
+                return;
+              }
+              
+              ctx.strokeStyle = '#0066cc';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              
+              const numPoints = 200;
+              const timeSpan = 3.0 / Math.max(beatFreq, 0.1);
+              
+              for (let i = 0; i < numPoints; i++) {
+                const t = (i / numPoints) * timeSpan;
+                const x = (i / numPoints) * width;
+                const envelope = Math.cos(2 * Math.PI * beatFreq * t + wavePhase);
+                const y = height / 2 - (envelope * (height / 2 - 20));
+                
+                if (i === 0) {
+                  ctx.moveTo(x, y);
+                } else {
+                  ctx.lineTo(x, y);
+                }
+              }
+              
+              ctx.stroke();
+              
+              ctx.fillStyle = '#0066cc';
+              ctx.font = 'bold 12px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.fillText(`Binaural Beat: ${beatFreq.toFixed(2)} Hz oscillation`, width / 2, 15);
+              
+              const state = getBrainwaveState();
+              ctx.fillStyle = getStateColor(state.name);
+              ctx.font = '11px sans-serif';
+              ctx.fillText(`State: ${state.name}`, width / 2, height - 10);
+              
+              setWavePhase(prev => prev + 0.05);
+              animationRef.current = requestAnimationFrame(animate);
+            };
+            
+            animate();
+            
+            return () => {
+              if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+              }
+            };
+          }, [leftFreq, rightFreq, wavePhase]);
+          
+          const beatFreq = Math.abs(leftFreq - rightFreq);
+          const getBrainwaveState = () => {
+            if (beatFreq <= 4) return { name: 'Delta', color: 'text-purple-600' };
+            if (beatFreq <= 7) return { name: 'Theta', color: 'text-blue-600' };
+            if (beatFreq <= 12) return { name: 'Alpha', color: 'text-green-600' };
+            if (beatFreq <= 30) return { name: 'Beta', color: 'text-yellow-600' };
+            return { name: 'Gamma', color: 'text-orange-600' };
+          };
+          
+          const getStateColor = (name) => {
+            const colors = {
+              'Delta': '#9333ea',
+              'Theta': '#2563eb',
+              'Alpha': '#16a34a',
+              'Beta': '#ca8a04',
+              'Gamma': '#ea580c'
+            };
+            return colors[name] || '#666666';
+          };
+          
+          const brainwaveState = getBrainwaveState();
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 p-4 md:p-8">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <div className="flex items-center justify-between mb-2 flex-wrap gap-3">
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      Human Tuning Fork
+                    </h1>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowNotes(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        <BookOpen size={18} />
+                        Reference Notes
+                      </button>
+						  <a
+                          href="https://www.paypal.com/donate" 
+						  target="_blank"
+						  rel="noopener noreferrer"
+						  className="flex items-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
+						>
+						  <Heart size={18} />
+						  Donate
+						</a>
+                    </div>
+                  </div>
+                  <p className="text-gray-600 text-sm">
+                    Gateway Process binaural beat generator for consciousness exploration
+                  </p>
+                </div>
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <button
+                    onClick={() => setShowBrainwaveGuide(!showBrainwaveGuide)}
+                    className="flex items-center gap-2 text-lg font-semibold text-gray-800 w-full"
+                  >
+                    {showBrainwaveGuide ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                    🧠 Brainwave Frequency Guide
+                  </button>
+                  {showBrainwaveGuide && (
+                    <div className="mt-4 space-y-2 text-sm text-gray-700">
+                      <p><strong>Delta (0.5-4 Hz):</strong> Deep sleep, healing, unconscious mind access</p>
+                      <p><strong>Theta (4-7 Hz):</strong> Deep meditation, creativity, intuition, dreamlike states</p>
+                      <p><strong>Alpha (8-12 Hz):</strong> Relaxed awareness, visualization, calm focus, Gateway Focus 10</p>
+                      <p><strong>Beta (12-30 Hz):</strong> Normal waking consciousness, alertness, active thinking</p>
+                      <p><strong>Gamma (30-40 Hz):</strong> Peak focus, heightened perception, information processing</p>
+                      <p className="mt-3 text-indigo-600">💡 Gateway Process uses Alpha/Theta for hemispheric synchronization</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">🎯 Gateway Process Sessions</h2>
+                  
+                  {sessionActive && currentSession && (
+                    <div className="mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-gray-700">
+                          Phase {currentPhase + 1}/{currentSession.phases.length}: {currentSession.phases[currentPhase].name}
+                        </p>
+                        <p className="text-gray-600">{timeRemaining} remaining</p>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div 
+                          className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-1000"
+                          style={{ width: `${sessionProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button
+                      onClick={() => startSession("Focus 10")}
+                      disabled={sessionActive}
+                      className="px-4 py-3 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Focus 10 (20 min)
+                    </button>
+                    <button
+                      onClick={() => startSession("Focus 12")}
+                      disabled={sessionActive}
+                      className="px-4 py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Focus 12 (20 min)
+                    </button>
+                    <button
+                      onClick={() => startSession("Focus 15")}
+                      disabled={sessionActive}
+                      className="px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Focus 15 (21 min)
+                    </button>
+                    <button
+                      onClick={stopSession}
+                      disabled={!sessionActive}
+                      className="px-4 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                    >
+                      <StopCircle size={18} />
+                      Stop
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <button
+                    onClick={() => setShowBackgroundSounds(!showBackgroundSounds)}
+                    className="flex items-center gap-2 text-lg font-semibold text-gray-800 w-full mb-2"
+                  >
+                    {showBackgroundSounds ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                    🔊 Background Sounds & Effects
+                  </button>
+                  <p className="text-xs text-gray-500 mb-4">Gateway Process audio enhancement tools</p>
+                  
+                  {showBackgroundSounds && (
+                    <div className="space-y-4">
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-gray-700 mb-3">Noise Generator</h3>
+                        <div className="flex flex-wrap gap-3 mb-3">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={pinkNoise}
+                              onChange={(e) => setPinkNoise(e.target.checked)}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Pink Noise (Gateway Standard)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={whiteNoise}
+                              onChange={(e) => setWhiteNoise(e.target.checked)}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">White Noise</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={brownNoise}
+                              onChange={(e) => setBrownNoise(e.target.checked)}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">Brown Noise</span>
+                          </label>
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600">Noise Volume: {noiseVolume}%</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={noiseVolume}
+                            onChange={(e) => setNoiseVolume(parseInt(e.target.value))}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-gray-700 mb-3">Isochronic Entrainment (Click Track)</h3>
+                        <label className="flex items-center gap-2 cursor-pointer mb-3">
+                          <input
+                            type="checkbox"
+                            checked={clickTrack}
+                            onChange={(e) => setClickTrack(e.target.checked)}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm">Enable Click Track (pulses at binaural beat frequency)</span>
+                        </label>
+                        <div className="mb-3">
+                          <label className="text-sm text-gray-600 block mb-1">Style:</label>
+                          <select
+                            value={clickStyle}
+                            onChange={(e) => setClickStyle(e.target.value)}
+                            disabled={!clickTrack}
+                            className="w-full md:w-auto px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50"
+                          >
+                            <option value="click">Click (sharp impulse)</option>
+                            <option value="beep">Beep (soft tone)</option>
+                            <option value="pingpong">Ping-Pong (L-R alternation)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600">Click Volume: {clickVolume}%</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={clickVolume}
+                            onChange={(e) => setClickVolume(parseInt(e.target.value))}
+                            className="w-full mt-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Tuning Mode</h2>
+                  <div className="flex gap-4 mb-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={mode === 'independent'}
+                        onChange={() => setMode('independent')}
+                        className="w-4 h-4"
+                      />
+                      <span>Independent</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={mode === 'locked'}
+                        onChange={handleLockMode}
+                        className="w-4 h-4"
+                      />
+                      <span>Locked (Binaural)</span>
+                    </label>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    {mode === 'independent' 
+                      ? 'Adjust each ear independently' 
+                      : `Locked: maintaining ${lockedOffset.toFixed(2)} Hz offset`}
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-800">Left Ear</h2>
+                      <p 
+                        className="text-2xl font-bold text-indigo-600 cursor-pointer hover:underline"
+                        onClick={() => setShowLeftInput(true)}
+                        title="Click to enter exact frequency"
+                      >
+                        {leftFreq.toFixed(2)} Hz
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setLeftMuted(!leftMuted)}
+                      className={`p-3 rounded-lg transition-colors ${
+                        leftMuted ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {leftMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="700"
+                    step="0.1"
+                    value={leftFreq}
+                    onChange={(e) => handleLeftChange(e.target.value)}
+                    className="w-full"
+                  />
+                  
+                  {showLeftInput && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowLeftInput(false)}>
+                      <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold mb-4">Set Left Frequency</h3>
+                        <input
+                          type="number"
+                          min="0"
+                          max="700"
+                          step="0.1"
+                          defaultValue={leftFreq}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val) && val >= 0 && val <= 700) {
+                                handleLeftChange(val);
+                                setShowLeftInput(false);
+                              }
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => {
+                              const input = e.target.parentElement.previousElementSibling;
+                              const val = parseFloat(input.value);
+                              if (!isNaN(val) && val >= 0 && val <= 700) {
+                                handleLeftChange(val);
+                                setShowLeftInput(false);
+                              }
+                            }}
+                            className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                          >
+                            Apply
+                          </button>
+                          <button
+                            onClick={() => setShowLeftInput(false)}
+                            className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-800">Right Ear</h2>
+                      <p 
+                        className="text-2xl font-bold text-purple-600 cursor-pointer hover:underline"
+                        onClick={() => setShowRightInput(true)}
+                        title="Click to enter exact frequency"
+                      >
+                        {rightFreq.toFixed(2)} Hz
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setRightMuted(!rightMuted)}
+                      className={`p-3 rounded-lg transition-colors ${
+                        rightMuted ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {rightMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                    </button>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="700"
+                    step="0.1"
+                    value={rightFreq}
+                    onChange={(e) => handleRightChange(e.target.value)}
+                    className="w-full"
+                  />
+                  
+                  {showRightInput && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowRightInput(false)}>
+                      <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="text-lg font-semibold mb-4">Set Right Frequency</h3>
+                        <input
+                          type="number"
+                          min="0"
+                          max="700"
+                          step="0.1"
+                          defaultValue={rightFreq}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val) && val >= 0 && val <= 700) {
+                                handleRightChange(val);
+                                setShowRightInput(false);
+                              }
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={(e) => {
+                              const input = e.target.parentElement.previousElementSibling;
+                              const val = parseFloat(input.value);
+                              if (!isNaN(val) && val >= 0 && val <= 700) {
+                                handleRightChange(val);
+                                setShowRightInput(false);
+                              }
+                            }}
+                            className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                          >
+                            Apply
+                          </button>
+                          <button
+                            onClick={() => setShowRightInput(false)}
+                            className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">📊 Waveform Visualization</h2>
+                  <canvas 
+                    ref={canvasRef}
+                    width={600}
+                    height={150}
+                    className="w-full border border-gray-200 rounded-lg"
+                  />
+                </div>
+
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl shadow-xl p-6 mb-6 text-white">
+                  <h2 className="text-2xl font-bold mb-2">Binaural Beat Analysis</h2>
+                  <p className="text-3xl font-bold mb-2">{beatFreq.toFixed(2)} Hz</p>
+                  <p className="text-lg">
+                    State: <span className="font-semibold">
+                      {brainwaveState.name}
+                    </span>
+                  </p>
+                  <div className="mt-3 text-sm opacity-90">
+                    <p>Left - Right = {(leftFreq - rightFreq).toFixed(2)} Hz</p>
+                    <p>Higher tone: {leftFreq > rightFreq ? 'Left Ear' : leftFreq < rightFreq ? 'Right Ear' : 'Equal'}</p>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xl font-semibold text-gray-800">Master Volume</h2>
+                    <p className="text-lg font-bold text-gray-600">{volume}%</p>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volume}
+                    onChange={(e) => setVolume(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-4">Quick Presets</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button
+                      onClick={() => setPreset(440, 440)}
+                      className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      440 Hz Tuning (A4)
+                    </button>
+                    <button
+                      onClick={() => setPreset(100, 102)}
+                      className="px-4 py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+                    >
+                      Delta (2 Hz)
+                    </button>
+                    <button
+                      onClick={() => setPreset(200, 206)}
+                      className="px-4 py-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                    >
+                      Theta (6 Hz)
+                    </button>
+                    <button
+                      onClick={() => setPreset(200, 210)}
+                      className="px-4 py-3 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                    >
+                      Alpha (10 Hz)
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-xl p-6 text-sm text-gray-600">
+                  <p className="mb-2">🎧 <strong>IMPORTANT:</strong> Use stereo headphones for binaural beats to work!</p>
+                  <ul className="space-y-1 ml-5 list-disc">
+                    <li>Gateway Sessions provide structured meditation with automatic phase transitions</li>
+                    <li>Pink Noise masks distractions | Click Track pulses at beat frequency for entrainment</li>
+                    <li>Click 📖 Reference Notes for detailed information on the Gateway Process</li>
+                    <li>Click the Hz values to manually input exact frequencies</li>
+                    <li>Independent Mode: Tune each ear separately • Locked Mode: Maintain frequency offset</li>
+                  </ul>
+                  <p className="mt-3 text-red-600">⚠️ Do not use while driving or operating machinery</p>
+                </div>
+              </div>
+			  {showNotes && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setShowNotes(false)}>
+                  <div className="bg-white rounded-2xl shadow-2xl max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+                      <h2 className="text-2xl font-bold text-gray-800">📖 Gateway Process Reference Notes</h2>
+                      <button
+                        onClick={() => setShowNotes(false)}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="p-6 space-y-6 text-sm">
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">🎯 ABOUT THIS APPLICATION</h3>
+                        <p className="text-gray-700 leading-relaxed mb-3">
+                          This tool is based on the CIA's "Analysis and Assessment of Gateway Process" 
+                          (CIA-RDP96-00788R001700210016-5), a 1983 U.S. Army Intelligence report that 
+                          evaluated the Monroe Institute's Hemi-Sync technology for achieving altered 
+                          states of consciousness through hemispheric synchronization.
+                        </p>
+                        <p className="text-gray-700 leading-relaxed">
+                          The document concludes that binaural beats can safely guide the brain into 
+                          specific states for enhanced focus, relaxation, meditation, healing, and 
+                          expanded awareness - without subliminal messages or loss of control.
+                        </p>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">🧠 HOW BINAURAL BEATS WORK: THE SCIENCE</h3>
+                        <p className="text-gray-700 leading-relaxed mb-3">
+                          The Gateway document explicitly describes the mechanism:
+                        </p>
+                        <blockquote className="border-l-4 border-indigo-500 pl-4 italic text-gray-600 mb-3">
+                          "When a tone of 100 Hz is played in one ear and 104 Hz in the other, the brain 
+                          detects a 4 Hz difference and begins to resonate at that 4 Hz frequency."
+                        </blockquote>
+                        <p className="text-gray-700 leading-relaxed mb-3">
+                          This is called the FREQUENCY FOLLOWING RESPONSE - your brain naturally 
+                          synchronizes to the mathematical difference between the two tones.
+                        </p>
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <p className="font-semibold text-gray-800 mb-2">KEY POINTS:</p>
+                          <ul className="list-disc ml-5 space-y-1 text-gray-700">
+                            <li>The "beat" is NOT an external sound - it's an electrical signal created by BOTH brain hemispheres working together</li>
+                            <li>This creates HEMISPHERIC SYNCHRONIZATION (Hemi-Sync) - a coherent, whole-brain state optimal for consciousness exploration</li>
+                            <li>Like a crystal goblet resonating to a pure tone, your brain cells resonate sympathetically to the binaural beat</li>
+                            <li>This synchronized state normally occurs only briefly in daily life, but binaural beats can sustain it for extended periods</li>
+                          </ul>
+                        </div>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">🧬 HEALING WITH FREQUENCIES</h3>
+                        <p className="text-gray-700 leading-relaxed mb-3">
+                          The Gateway document suggests frequencies can induce healing states through:
+                        </p>
+                        <div className="space-y-3">
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">1. DEEP RELAXATION & STRESS REDUCTION</p>
+                            <p className="text-gray-700 text-sm italic mt-1">
+                              "The Gateway Process is designed to rapidly induce a state of profound 
+                              calm in the nervous system and to allow the entire body to begin 
+                              vibrating coherently at about 7-7.5 cycles per second."
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">2. ENHANCED BODY-MIND CONNECTION</p>
+                            <p className="text-gray-700 text-sm italic mt-1">
+                              "Pain can be blocked, healing can be enhanced, malignant tumors can 
+                              apparently be suppressed and ultimately destroyed, the body's pleasure 
+                              centers can be stimulated, and a variety of specific physiological 
+                              results may be achieved."
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">3. RESONANCE WITH EARTH'S FIELD</p>
+                            <p className="text-gray-700 text-sm italic mt-1">
+                              "The resulting resonance matches the electrostatic field of the Earth 
+                              (Schumann Resonance ~7.83 Hz), thus enhancement of bodily energy levels."
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">4. CONSCIOUS PATTERNING</p>
+                            <p className="text-gray-700 text-sm italic mt-1">
+                              "Since consciousness is the source of all reality, our thoughts have 
+                              the power to influence the development of reality... those thoughts can 
+                              be projected with adequate intensity" during deep meditative states.
+                            </p>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">📊 FREQUENCY TABLE - GATEWAY FOCUS LEVELS</h3>
+                        <p className="text-gray-700 mb-3">Based on the CIA document and Monroe Institute research:</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse border border-gray-300 text-sm">
+                            <thead className="bg-gray-100">
+                              <tr>
+                                <th className="border border-gray-300 p-2 text-left">Brainwave</th>
+                                <th className="border border-gray-300 p-2 text-left">Frequency</th>
+                                <th className="border border-gray-300 p-2 text-left">Gateway Use & Effects</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td className="border border-gray-300 p-2 font-semibold">Delta</td>
+                                <td className="border border-gray-300 p-2">0.5-4 Hz</td>
+                                <td className="border border-gray-300 p-2">
+                                  <p className="font-semibold mb-1">Focus 15+ (Deep States)</p>
+                                  <ul className="list-disc ml-4 space-y-0.5">
+                                    <li>Deep sleep & unconscious access</li>
+                                    <li>Physical healing & regeneration</li>
+                                    <li>Immune system enhancement</li>
+                                    <li>Cell repair & growth hormone</li>
+                                  </ul>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="border border-gray-300 p-2 font-semibold">Theta</td>
+                                <td className="border border-gray-300 p-2">4-7 Hz<br/>~7-7.5 Hz</td>
+                                <td className="border border-gray-300 p-2">
+                                  <p className="font-semibold mb-1">Focus 12 (Expanded Awareness)</p>
+                                  <ul className="list-disc ml-4 space-y-0.5">
+                                    <li>Deep meditation & creativity</li>
+                                    <li>Emotional healing & integration</li>
+                                    <li>Access to intuitive information</li>
+                                    <li>Gateway to out-of-body states</li>
+                                    <li>Earth resonance (Schumann)</li>
+                                    <li>Optimal coherent body vibration</li>
+                                  </ul>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="border border-gray-300 p-2 font-semibold">Alpha</td>
+                                <td className="border border-gray-300 p-2">8-12 Hz</td>
+                                <td className="border border-gray-300 p-2">
+                                  <p className="font-semibold mb-1">Focus 10 (Mind Awake, Body Asleep)</p>
+                                  <ul className="list-disc ml-4 space-y-0.5">
+                                    <li>Relaxed alertness & visualization</li>
+                                    <li>Bridge between conscious/unconscious</li>
+                                    <li>Enhanced learning & memory</li>
+                                    <li>Gateway entry phase</li>
+                                  </ul>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="border border-gray-300 p-2 font-semibold">Beta</td>
+                                <td className="border border-gray-300 p-2">12-30 Hz</td>
+                                <td className="border border-gray-300 p-2">
+                                  <p className="font-semibold mb-1">Normal waking consciousness</p>
+                                  <ul className="list-disc ml-4 space-y-0.5">
+                                    <li>Active thinking & concentration</li>
+                                    <li>Problem solving & focus</li>
+                                    <li>Not primary Gateway target</li>
+                                  </ul>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td className="border border-gray-300 p-2 font-semibold">Gamma</td>
+                                <td className="border border-gray-300 p-2">30-100 Hz</td>
+                                <td className="border border-gray-300 p-2">
+                                  <p className="font-semibold mb-1">Not emphasized in Gateway</p>
+                                  <ul className="list-disc ml-4 space-y-0.5">
+                                    <li>Peak awareness & insight</li>
+                                    <li>Information processing</li>
+                                    <li>Modern research shows promise</li>
+                                  </ul>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">🔊 PINK NOISE IN GATEWAY PROCESS</h3>
+                        <p className="text-gray-700 leading-relaxed mb-3">
+                          The CIA document specifically mentions:
+                        </p>
+                        <blockquote className="border-l-4 border-indigo-500 pl-4 italic text-gray-600 mb-3">
+                          "Additional forms of 'pink and white noise' enter the sound stream being 
+                          directed into his ears from the Gateway tape [at Focus 12]."
+                        </blockquote>
+                        <p className="text-gray-700 mb-2">Pink noise serves multiple purposes:</p>
+                        <ul className="list-disc ml-5 space-y-1 text-gray-700">
+                          <li>Masks external distractions that could break the meditative state</li>
+                          <li>Provides a consistent background "carrier" for the binaural beats</li>
+                          <li>Promotes deep relaxation through its natural 1/f spectrum</li>
+                          <li>Used extensively throughout authentic Gateway tapes</li>
+                        </ul>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">✨ PRACTICAL APPLICATIONS</h3>
+                        <p className="text-gray-700 mb-3">The Gateway Process enables you to:</p>
+                        <div className="space-y-2">
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">1. REPROGRAM PATTERNS</p>
+                            <p className="text-gray-700 text-sm italic mt-1">
+                              "The technique of patterning recognizes the fact that since consciousness 
+                              is the source of all reality, our thoughts have the power to influence 
+                              the development of reality in time-space."
+                            </p>
+                          </div>
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">2. HEAL THE BODY</p>
+                            <p className="text-gray-700 text-sm mt-1">
+                              Through visualization and focused intention in deep states, you can 
+                              direct healing energy to specific areas.
+                            </p>
+                          </div>
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">3. ACCESS EXPANDED AWARENESS</p>
+                            <p className="text-gray-700 text-sm italic mt-1">
+                              "Once the participant has achieved this state of greatly expanded 
+                              awareness, he is ready to begin employing a series of specific 
+                              techniques or 'tools'."
+                            </p>
+                          </div>
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">4. ACCELERATE CONSCIOUSNESS DEVELOPMENT</p>
+                            <p className="text-gray-700 text-sm mt-1">
+                              What might take 5+ years of traditional meditation can potentially 
+                              be achieved in months with proper frequency guidance.
+                            </p>
+                          </div>
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <p className="font-semibold text-gray-800">5. OUT-OF-BODY EXPERIENCES (OBE)</p>
+                            <p className="text-gray-700 text-sm italic mt-1">
+                              "Enhancement of bodily energy levels to a point which permits the 
+                              person to experience out-of-body movement when they are ready."
+                            </p>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-red-600 mb-3">⚠️ IMPORTANT SAFETY NOTES</h3>
+                        <ul className="list-disc ml-5 space-y-2 text-gray-700">
+                          <li>You remain in TOTAL CONTROL - no subliminal messages or external control</li>
+                          <li>Do not use while driving, operating machinery, or requiring alertness</li>
+                          <li>Stereo headphones are ESSENTIAL - the effect cannot work through speakers</li>
+                          <li>Start with low volumes (20-30%) and gradually increase</li>
+                          <li>The document cautions against "forcing the pace" - allow natural progression</li>
+                          <li>If you experience discomfort, stop immediately and return to normal state</li>
+                        </ul>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">📚 ORIGINAL SOURCE</h3>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <p className="text-gray-700"><strong>Full document:</strong> CIA-RDP96-00788R001700210016-5</p>
+                          <p className="text-gray-700"><strong>Title:</strong> "Analysis and Assessment of Gateway Process"</p>
+                          <p className="text-gray-700"><strong>Author:</strong> LTC Wayne M. McDonnell, U.S. Army Intelligence</p>
+                          <p className="text-gray-700"><strong>Date:</strong> June 9, 1983</p>
+                          <p className="text-gray-700"><strong>Classification:</strong> Approved for Release 2003/09/10</p>
+                          <p className="text-gray-700 mt-2"><strong>Available at:</strong> https://www.cia.gov/readingroom/</p>
+                        </div>
+                      </section>
+
+                      <section>
+                        <h3 className="text-xl font-bold text-indigo-600 mb-3">💡 HOW TO USE THIS TOOL EFFECTIVELY</h3>
+                        <ol className="list-decimal ml-5 space-y-2 text-gray-700">
+                          <li>Find a quiet, comfortable space where you won't be disturbed</li>
+                          <li>Use quality stereo headphones (essential for binaural effect)</li>
+                          <li>Start with a Gateway Session (Focus 10, 12, or 15) for structured guidance</li>
+                          <li>Enable Pink Noise for authentic Gateway experience</li>
+                          <li>Consider adding Click Track once comfortable with basics</li>
+                          <li>Keep a journal of your experiences and insights</li>
+                          <li>Practice regularly - consistency enhances results</li>
+                          <li>Trust the process - allow natural progression without forcing</li>
+                        </ol>
+                      </section>
+
+                      <section className="bg-indigo-50 p-4 rounded-lg">
+                        <p className="text-gray-700 italic">
+                          Remember: This is a tool for consciousness exploration and personal 
+                          development based on legitimate government research into human potential. 
+                          Approach with an open mind, but also with discernment and respect for the 
+                          power of these techniques.
+                        </p>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        ReactDOM.render(<HumanTuningFork />, document.getElementById('root'));
+    </script>
+</body>
+</html>
